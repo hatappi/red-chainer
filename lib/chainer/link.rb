@@ -264,7 +264,7 @@ module Chainer
       @children.each_with_index do |child, idx|
         prefix = "/#{idx}"
         yield prefix, child
-        child.namedlinks(include_uninit: true) do |path, link|
+        child.namedlinks(skipself: true) do |path, link|
           yield [prefix + path, link]
         end
       end
