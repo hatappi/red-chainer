@@ -1,6 +1,6 @@
 require 'chainer'
 # require __dir__ + '/models/vgg'
-require __dir__ + '/models/resnet50'
+require __dir__ + '/models/resnet18'
 require 'optparse'
 
 args = {
@@ -41,7 +41,7 @@ end
 
 puts "setup..."
 
-model = Chainer::Links::Model::Classifier.new(ResNet50.new(n_classes: class_labels))
+model = Chainer::Links::Model::Classifier.new(ResNet18.new(n_classes: class_labels))
 
 optimizer = Chainer::Optimizers::MomentumSGD.new(lr: args[:learnrate])
 optimizer.setup(model)
