@@ -276,7 +276,7 @@ module Chainer
       end
     end
 
-    def serialize(self, serializer):
+    def serialize(serializer)
       super
       @children.each_with_index do |child, idx|
         child.serialize(serialize[idx.to_s])
