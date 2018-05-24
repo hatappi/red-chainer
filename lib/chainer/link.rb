@@ -233,7 +233,7 @@ module Chainer
     end
 
     def namedparams(include_uninit: true)
-      super.namedparams(include_uninit: include_uninit) do |ret|
+      super(include_uninit: include_uninit) do |ret|
         yield ret
       end
       @children.each_with_index do |link, idx|
