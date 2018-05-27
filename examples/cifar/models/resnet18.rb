@@ -1,11 +1,13 @@
-class BasicA < Chainer::Chain
+class Plain < Chainer::Chain
   include Chainer::Functions::Activation
   include Chainer::Initializers
   include Chainer::Links::Connection
   include Chainer::Links::Normalization
 
-  def initialize(ch, stride)
+  def initialize(ch, stride, use_conv: false)
     super()
+
+    @use_conv = use_conv
     w = HeNormal.new
 
     init_scope do
@@ -13,53 +15,31 @@ class BasicA < Chainer::Chain
       @bn1 = BatchNormalization.new(ch)
       @conv2 = Convolution2D.new(nil, ch, 3, stride: 1, pad: 1, nobias: true, initial_w: w)
       @bn2 = BatchNormalization.new(ch)
-      @conv3 = Convolution2D.new(nil, ch, 3, stride: stride, pad: 1, nobias: true, initial_w: w)
-      @bn3 = BatchNormalization.new(ch)
-    end
-  end
-
-  def call(x)
-    h1 = Relu.relu(@bn1.(@conv1.(x)))
-    h1 = @bn2.(@conv2.(h1))
-
-    h2 = @bn3.(@conv3.(x))
-
-    Relu.relu(h1 + h2)
-  end
-end
-
-class BasicB < Chainer::Chain
-  include Chainer::Functions::Activation
-  include Chainer::Initializers
-  include Chainer::Links::Connection
-  include Chainer::Links::Normalization
-
-  def initialize(ch)
-    super()
-    w = HeNormal.new
-
-    init_scope do
-      @conv1 = Convolution2D.new(nil, ch, 3, stride: 1, pad: 1, nobias: true, initial_w: w)
-      @bn1 = BatchNormalization.new(ch)
-      @conv2 = Convolution2D.new(nil, ch, 3, stride: 1, pad: 1, nobias: true, initial_w: w)
-      @bn2 = BatchNormalization.new(ch)
+      if @use_conv
+        @conv3 = Convolution2D.new(nil, ch, 3, stride: stride, pad: 1, nobias: true, initial_w: w)
+        @bn3 = BatchNormalization.new(ch)
+      end
     end
   end
 
   def call(x)
     h = Relu.relu(@bn1.(@conv1.(x)))
     h = @bn2.(@conv2.(h))
-
-    Relu.relu(h + x)
+    if @use_conv
+      h2 = @bn3.(@conv3.(x))
+      Relu.relu(h + h2)
+    else
+      Relu.relu(h + x)
+    end
   end
 end
 
 class Block < Chainer::ChainList
   def initialize(layer, ch, stride=2)
     super()
-    add_link(BasicA.new(ch, stride))
+    add_link(Plain.new(ch, stride, use_conv: true))
     (layer-1).times do
-      add_link(BasicB.new(ch))
+      add_link(Plain.new(ch, 1))
     end
   end
 
@@ -73,16 +53,14 @@ end
 
 class ResNet18 < Chainer::Chain
   include Chainer::Functions::Activation
+  include Chainer::Functions::Evaluation
+  include Chainer::Functions::Loss
+  include Chainer::Functions::Pooling
   include Chainer::Initializers
   include Chainer::Links::Connection
   include Chainer::Links::Normalization
-  include Chainer::Functions::Pooling
-  include Chainer::Functions::Loss
-  include Chainer::Functions::Evaluation
 
-  INSIZE = 224
-
-  def initialize(n_classes: 10, n_layers: [3, 4, 6, 3])
+  def initialize(n_classes: 10)
     super()
     initial_w = HeNormal.new
 
@@ -100,7 +78,6 @@ class ResNet18 < Chainer::Chain
 
   def call(x)
     h = Relu.relu(@bn.(@conv.(x)))
-    # h = MaxPooling2D.max_pooling_2d(Relu.relu(h), 3, stride: 2)
     h = @res2.(h)
     h = @res3.(h)
     h = @res4.(h)
